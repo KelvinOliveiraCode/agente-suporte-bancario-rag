@@ -1,0 +1,39 @@
+[project]
+name = "agente-suporte-bancario-rag"
+version = "0.1.0"
+description = "Agente de suporte bancário com RAG e anti-alucinação em 4 camadas de validação (saída, fonte, consistência, política)"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.100.0",
+    "pydantic>=2.0.0",
+    "uvicorn>=0.20.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx2>=0.30.0",
+    "pytest>=8.0.0",
+    "ruff>=0.8.0",
+]
+pgvector = [
+    "pgvector>=0.3.0",
+    "psycopg[binary]>=3.2.0",
+]
+langchain = [
+    "langchain-core>=0.3.0",
+    "sentence-transformers>=2.5.0",
+]
+
+[project.scripts]
+agente-suporte-bancario = "agente_suporte_bancario_rag.main:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
