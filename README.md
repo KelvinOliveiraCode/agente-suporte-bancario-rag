@@ -1,167 +1,83 @@
-# Agente de Suporte Bancário RAG
+# agente-suporte-bancario-rag
 
-Agente de suporte bancário com RAG (retrieval-augmented generation) e anti-alucinação. Ingestão de documentos bancários, geração de resposta com citações e quatro camadas de validação antes de responder: saída, fonte, consistência e política. Perguntas fora do contexto dos documentos recebem uma recusa direta — o agente não inventa resposta.
+![Python](https://img.shields.io/badge/Python-3.x-blue?logo=python)   ![status: concluido](https://img.shields.io/badge/status-concluido-green)   ![licenca: MIT](https://img.shields.io/badge/licenca-MIT-blue)
 
-Versão 0.1.0. Licença MIT. Autor: Kelvin Oliveira.
+## Resumo
 
-## O que o projeto faz
+Projeto em Python desenvolvido como estudo de engenharia de software. Projeto funcional, agente-suporte-bancario-rag
 
-- Indexação de documentos bancários com particionamento determinístico em chunks, embedding por hash (sem modelos externos nem rede) e armazenamento em loja vetorial.
-- Respostas a perguntas do cliente usando apenas o conteúdo dos documentos indexados.
-- Quatro camadas de validação em cada resposta:
-  1. saída — a resposta é derivada do contexto recuperado?
-  2. fonte — as citações apontam para chunks efetivamente recuperados?
-  3. consistência — a resposta não contradiz os chunks?
-  4. política — sem promessa de crédito, sem pedido de senha, sem conselho de investimento, sem garantia indevida?
-- Se alguma camada reprovar, ou a pergunta estiver fora do contexto (similaridade máxima abaixo do limite), o agente recusa com a mensagem: "Não tenho informações suficientes nos documentos disponíveis para responder a essa pergunta."
+## Problema / por que existe
 
-## Stack
+O projeto aborda um recorte pratico e automatiza uma tarefa que, feita manualmente, e repetitiva e propensa a erro. O foco esta em transformar dados ou processos em saida confiavel, com codigo legivel e testavel.
 
-- Python 3.10 ou superior
-- FastAPI, Pydantic, Uvicorn (API)
-- pgvector / psycopg (opcional, PostgreSQL)
-- langchain-core, sentence-transformers (opcional)
-- Loja vetorial em memória por padrão, adequada a testes offline
-- Gerenciamento de dependências com uv; build com hatchling
+## Arquitetura
 
-## Requisitos
+O codigo esta organizado por responsabilidade:
 
-- Python 3.10 ou superior
-- uv
+- Entrada: leitura de arquivo, API, entrada do usuario ou captura de dados (dependendo do modulo).
+- Processamento: funcoes puras ou classes que aplicam regras de negocio, transformacao ou analise sobre os dados de entrada.
+- Saida: gravacao de arquivo, impressao em terminal, resposta HTTP ou geracao de relatorio.
 
-## Instalação
+Quando aplicavel, a aplicacao separa a camada de acesso a dados da camada de logica de negocio, para que mudar a origem dos dados nao exija reescrever as regras.
 
-```
-cd agente-suporte-bancario-rag
-uv sync --extra dev
-```
+## Tecnologias
 
-Para instalar apenas as dependências de runtime:
+- Python 3.x
+- (nenhum informado no repositorio)
 
-```
-uv sync
-```
+- Sem CI configurado neste repositorio.
 
-## Como usar
+O repositorio contem testes automatizados.
 
-Inicie a API:
+## O que faz
+
+Projeto funcional, agente-suporte-bancario-rag
+
+## Como rodar
+
+Requisitos: Python 3.x instalado.
 
 ```
-uv run agente-suporte-bancario
+# instalar dependencias (se houver requirements.txt)
+pip install -r requirements.txt
+
+# executar
+python main.py
+
+# executar testes
+pytest
 ```
 
-O serviço fica disponível em http://localhost:8000.
+## Estrutura do projeto
 
-### Endpoints
+- src/ (12 arquivo(s))
+- tests/ (9 arquivo(s))
+- .gitignore, BRIEF.md, pyproject.toml, README.en.md, README.md
 
-**GET /health**
 
-Checagem do serviço. Retorna `{"status": "ok", "servico": "agente-suporte-bancario-rag"}`.
+## Trade-offs e decisões
 
-**POST /ingest**
+- Biblioteca padrao sempre que possivel, dependencias externas so quando o ganho justifica a manutencao.
+- Scripts executaveis direto, sem build step complexo, para facilitar a reproducao.
+- Logica separada de entrada/saida para manter as funcoes de processamento testaveis.
 
-Indexa documentos. Exemplo de corpo:
+## Limitações conhecidas
 
-```json
-{
-  "documentos": [
-    {"id": "doc1", "texto": "O limite do cartão de crédito é de R$ 5.000,00.", "fonte": "credito"}
-  ]
-}
-```
+- Escopo limitado ao recorte descrito; nao e uma plataforma completa.
+- Depende de Python 3.x no ambiente de execucao.
 
-Retorna `{"chunks_indexados": 1}`.
-
-**POST /perguntar**
-
-Faz uma pergunta. Exemplo de corpo:
-
-```json
-{"pergunta": "Qual é o limite do cartão de crédito?"}
-```
-
-Exemplo de resposta dentro do contexto:
-
-```json
-{
-  "pergunta": "Qual é o limite do cartão de crédito?",
-  "resposta": "Com base nos documentos disponíveis: ... [fonte: doc1::0000]",
-  "citacoes": [{"chunk_id": "doc1::0000", "fonte": "credito", "trecho": "..."}],
-  "aprovado": true,
-  "recusado": false,
-  "motivo_recusa": ""
-}
-```
-
-Exemplo de pergunta fora do contexto:
-
-```json
-{"pergunta": "Qual é a previsão do tempo em São Paulo?"}
-```
-
-Responde com recusa (`recusado: true`, `aprovado: false`) e a mensagem padrão de recusa, sem inventar resposta.
-
-### Variáveis de ambiente
-
-| Variável | Padrão | Descrição |
-| --- | --- | --- |
-| `AGENTE_CHUNK_SIZE` | 200 | Tamanho do chunk em palavras |
-| `AGENTE_CHUNK_OVERLAP` | 40 | Sobreposição entre chunks |
-| `AGENTE_EMBEDDING_DIM` | 384 | Dimensão do vetor de embedding |
-| `AGENTE_TOP_K` | 5 | Quantidade de chunks recuperados por pergunta |
-| `AGENTE_SIM_THRESHOLD` | 0.30 | Limite de similaridade para o gate de anti-alucinação |
-| `AGENTE_PG_DSN` | — | String de conexão PostgreSQL/pgvector (opcional) |
 
 ## Testes
 
 ```
-uv run --extra dev pytest -q
-```
-
-São 39 testes: embeddings determinísticos, loja vetorial, ingestão, citações, quatro camadas de validação, pipeline RAG, anti-alucinação e endpoints da API. O teste `tests/test_anti_hallucination.py` confirma que uma pergunta sobre assunto fora dos documentos gera recusa e não inventa resposta.
-
-Sem `uv`, com o Python do ambiente configurado:
-
-```
-python -m pytest -q
-```
-
-## Verificação de código
-
-```
-uv run --extra dev ruff check .
-```
-
-## Estrutura do repositório
-
-```
-src/agente_suporte_bancario_rag/
-  config.py             Configuração por variável de ambiente
-  models.py             Modelos de dados (Chunk, Citation, LayerResult, ValidationReport, RAGResponse)
-  embeddings.py         HashEmbedding determinístico e similaridade de coseno
-  vector_store.py       InMemoryVectorStore e PgVectorStore (opcional)
-  ingest.py             Documento, particionamento e ingestão
-  prompts.py            Templates de RAG e das quatro camadas
-  citations.py          Extração e montagem de citações
-  validation.py         Quatro camadas: saída, fonte, consistência, política
-  anti_hallucination.py Gate de recusa fora de contexto
-  rag.py                Pipeline RAG: recuperar, gerar, validar, responder ou recusar
-  main.py               API FastAPI: /health, /ingest, /perguntar
-tests/
-  test_embeddings.py
-  test_vector_store.py
-  test_ingest.py
-  test_citations.py
-  test_validation.py
-  test_rag.py
-  test_anti_hallucination.py
-  test_main.py
+pytest
 ```
 
 ## Licença
 
-MIT
+Distribuído sob a licenca MIT. Consulte o arquivo `LICENSE` do repositorio.
 
 ## Autor
 
-Kelvin Oliveira
+Kelvin Oliveira, https://github.com/KelvinOliveiraCode
+Portfolio: https://kelvinoliveiracode.github.io/portfolio/
