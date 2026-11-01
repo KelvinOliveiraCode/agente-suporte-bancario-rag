@@ -1,118 +1,101 @@
 # agente-suporte-bancario-rag
 
-<div align="center">
-
 [English](README.en.md) · **Português (Brasil)**
 
-</div>
-
-[![Python 3](https://img.shields.io/badge/Python-3.x-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/) [![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=flat-square&logo=scikit-learn)](https://scikit-learn.org/) [![pandas](https://img.shields.io/badge/pandas-150458?style=flat-square&logo=pandas)](https://pandas.pydata.org/) [![pytest](https://img.shields.io/badge/pytest-0A9EDC?style=flat-square&logo=pytest)](https://docs.pytest.org/) [![MIT License](https://img.shields.io/badge/License-MIT-f4c430?style=flat-square)](LICENSE)
-
-### Projeto funcional ,  agente-suporte-bancario-rag
-
----
+[![Python 3](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](#) [![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?style=flat-square&logo=fastapi)](#) [![pytest](https://img.shields.io/badge/pytest-39%20testes-0A9EDC?style=flat-square&logo=pytest)](#) [![MIT License](https://img.shields.io/badge/License-MIT-f4c430?style=flat-square)](LICENSE)
 
 ## O que é
 
-Projeto funcional ,  agente-suporte-bancario-rag
+**Agente de suporte bancário com RAG** (Retrieval-Augmented Generation): uma API **FastAPI** que **ingesta documentos** (PDF/texto → chunks com sobreposição), **indexa embeddings** (hash/cosseno, ou provider plugável), responde perguntas com **contexto recuperado** e aplica **4 camadas de validação** na saída — anti-alucinação, consistência com fontes, conformidade política — incluindo um **gate anti-alucinação** configurável. É um laboratório educacional de RAG aplicado.
 
----
+## Status
 
-## Início Rápido
+Laboratório educacional funcional e testado (39 testes). Embedding base: hash (+cosseno) sem dependência externa; PgVector e outros providers são plugáveis.
 
-```bash
-# Clone e entre
-git clone https://github.com/KelvinOliveiraCode/<repo>.git
-cd <repo>
+## Funcionalidades
 
-# Instale dependências
-# Nenhum requirements.txt detectado
+- **Ingestão** (`ingest.py`): `particionar` com tamanho (200) e sobreposição (40), `ingestar` que chunkifica e armazena.
+- **Embeddings** (`embeddings.py`): `EmbeddingProvider` (Protocol) com `HashEmbedding` e `similaridade_coseno`.
+- **Vector Store** (`vector_store.py`): `VectorStore` (Protocol) com `InMemoryVectorStore` e `PgVectorStore`.
+- **RAG** (`rag.py`): `RAGAgent` — recupera chunks, monta contexto, gera resposta com o modelo configurado.
+- **Validação** (`validation.py`): 4 camadas: `camada_saida` (cobertura), `camada_fonte` (citações), `camada_consistencia`, `camada_politica` — cada uma retorna `LayerResult`.
+- **Anti-alucinação** (`anti_hallucination.py`): `gate_anti_alucinacao` com threshold de similaridade máxima.
+- **Citações** (`citations.py`): `extrair_citacoes` + `montar_citacoes`.
+- **API** (`main.py`): `GET /health`, `POST /ingest`, `POST /perguntar` (modelos Pydantic), `ValidationReport` e `RAGResponse`.
+- **CLI** (`agente-suporte-bancario`): execução standalone.
 
-# Execute o projeto
-python main.py
+## Arquitetura
 
-# Execute os testes
-pytest
+FastAPI com camadas: ingest → embeddings → vector store → RAG → validação → geração. Tudo plugável (providers, stores). Config via `config.py` (Settings).
+
+```mermaid
+flowchart LR
+    DOC[documento] --> ING[ingest - partition + chunk]
+    ING --> VS[VectorStore]
+    Q[pergunta] --> RAG[RAGAgent - recupera + contexto]
+    VS --> RAG
+    RAG --> VAL[validation - 4 camadas]
+    VAL --> AH[gate anti-alucinação]
+    AH --> RESP[PerguntaResponse]
+    API[FastAPI POST /perguntar] --> RAG
 ```
 
-## Como funciona
+## Stack
 
-Estrutura limpa e modular com separação de responsabilidades.
+- Python ≥ 3.10
+- FastAPI ≥ 0.100, Pydantic ≥ 2.0, uvicorn ≥ 0.20
+- pytest (dev)
 
----
+## Estrutura do repositório
 
-## Capacidades
+```
+agente-suporte-bancario-rag/
+├── pyproject.toml · BRIEF.md
+├── src/agente_suporte_bancario_rag/
+│   ├── main.py · config.py · models.py · prompts.py
+│   ├── ingest.py · embeddings.py · vector_store.py
+│   ├── rag.py · validation.py · anti_hallucination.py · citations.py
+├── tests/             # 39 testes
+└── LICENSE            # MIT
+```
 
-| Capacidade | Descrição |
-|------------|-------------|
-| Carregamento de Dados | Auto-download do TensorFlow creditcard.csv (284k transações) com cache local |
-| EDA e Visualização | Distribuição de classes, histogramas de Amount, heatmaps de correlação (matplotlib/seaborn) |
-| Pré-processamento | RobustScaler em Amount/Time, split estratificado, remoção de duplicatas |
-| Balanceamento | SMOTE oversampling (fallback: class_weight="balanced") |
-| Modelagem | LogisticRegression, RandomForest, ExtraTrees com RandomizedSearchCV (StratifiedKFold) |
-| Métricas | Accuracy, Precision, Recall, F1, ROC AUC, Specificity, Confusion Matrix |
-| Seleção | Score ponderado: Recall 40% + F1 30% + Precision 20% + Accuracy 10% |
-| Persistência | Serialização joblib para modelo, scaler e resultados completos |
+## Pré-requisitos e instalação
 
+```bash
+pip install -e .
+```
 
----
+## Como executar
 
+```bash
+agente-suporte-bancario          # CLI (modo standalone)
+uvicorn agente_suporte_bancario_rag.main:app  # API FastAPI
+```
 
+## Testes e qualidade
 
----
+Comando real (verificado pelo agente):
 
-## Perguntas Frequentes
+```bash
+PYTHONPATH=src python -m pytest tests/
+# 39 passed
+```
 
-<details>
-<summary><strong>O que é este projeto?</strong></summary>
+## Decisões técnicas e trade-offs
 
-Um estudo/projeto em Python demonstrando conceitos fundamentais.
+- **Embedding hash-based** (sem rede): RAG funcional offline; substituível por embedding real via `EmbeddingProvider`.
+- **4 camadas de validação**: a saída é auditada antes de responder; o `gate_anti_alucinacao` corta respostas com similaridade suspeita.
+- **PgVector e InMemory**: vector stores intercambiáveis.
 
-</details>
+## Limitações conhecidas e roadmap
 
-<details>
-<summary><strong>Como executar?</strong></summary>
+- Embedding hash é determinístico e local (não captura semântica profunda — só reforça o vocabulário presente).
+- Não inclui um LLM embarcado (consome o modelo configurado pelo `config.py`).
 
-Veja [Início Rápido](#início-rápido) para comandos copiáveis.
+## Processo de desenvolvimento
 
-</details>
+Projeto individual de Kelvin Oliveira, construído com agentes de IA orquestrados e revisado pelo autor.
 
-<details>
-<summary><strong>Há testes?</strong></summary>
+## Licença e autor
 
-Nenhum teste automatizado neste repositório.
-
-</details>
-
-<details>
-<summary><strong>Posso usar em produção?</strong></summary>
-
-Este é um **projeto de estudo/portfólio**. Revise e endureça (auth, persistência, monitoramento, etc.) antes de usar em produção.
-
-</details>
-
-
-
----
-
-## Documentação
-
-- **Código-Fonte** ,  Navegue pelo diretório `src/` para detalhes de implementação
-- **Referência da API** ,  Docstrings inline + type hints
-- **Diagrama de Arquitetura** ,  Veja [architecture.mermaid](docs/architecture.mermaid) (se presente)
-- **Changelog** ,  [CHANGELOG.md](CHANGELOG.md) (se presente)
-- **Contribuindo** ,  [CONTRIBUTING.md](CONTRIBUTING.md) (se presente)
-
-## Licença
-
-[MIT](LICENSE) ,  Kelvin Oliveira
-
----
-
-<div align="center">
-
-**Construído com** · Python 3 + scikit-learn + pandas
-
-**Autor** · [Kelvin Oliveira](https://github.com/KelvinOliveiraCode) · [Portfolio](https://kelvinoliveiracode.github.io/portfolio/)
-
-</div>
+MIT — Copyright (c) 2026 Kelvin Rebelo de Oliveira. Autor: [Kelvin Oliveira](https://github.com/KelvinOliveiraCode) · [Portfólio](https://kelvinoliveiracode.github.io/portfolio/)
